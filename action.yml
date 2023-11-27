@@ -1,0 +1,47 @@
+---
+name: 'hostwithquantum/deploy-runway'
+description: 'Deploy your application to runway!'
+branding:
+  icon: 'zap'
+  color: 'yellow'
+inputs:
+  application:
+    description: The name of the application to deploy
+    default: ''
+    required: false
+  create:
+    description: Create the app
+    default: false
+  plan:
+    description: The plan identifier (may require a CC!)
+    default: 'free-launch'
+    required: true
+  log-level:
+    description: debug, info, warn, error
+    default: error
+    required: true
+outputs:
+  application:
+    description: The name of the application
+    value: ${{ steps.get_app.outputs.app_name }}
+  url:
+    description: The URL of the application
+    value: ${{ steps.get_url.outputs.app_url }}
+runs:
+  using: "composite"
+  steps:
+    - run: runway -l ${{ inputs.log-level }} -y app create -a ${{ inputs.application }} -p ${{ inputs.plan }}
+      shell: bash
+      if: ${{ inputs.create == 'true' && inputs.application != '' }}
+    - run: runway -l ${{ inputs.log-level }} -y app create -p ${{ inputs.plan }}
+      shell: bash
+      if: ${{ inputs.create == 'true' && inputs.application == '' }}
+    - id: get_app_name
+      run: echo "app_name=$(runway app show -o json | .appname)" >> $GITHUB_OUTPUT
+    - id: get_url
+      run: echo "app_url=$(runway app show -o json | .url)" >> $GITHUB_OUTPUT
+    - run: runway -l ${{ inputs.log-level }} -y gitremote -a ${{ inputs.log-level }}
+      shell: bash
+      if: ${{ inputs.create == 'false' }}
+    - run: runway -l ${{ inputs.log-level }} -y app deploy
+      shell: bash
